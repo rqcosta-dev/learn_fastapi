@@ -1,0 +1,30 @@
+[project]
+name = "fast-zero"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Roberto Costa",email = "roberto@crafysystems.com.br"}
+]
+readme = "README.md"
+requires-python = "3.12.*"
+dependencies = [
+    "fastapi[standard] (>=0.115.8,<0.116.0)"
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+taskipy = "^1.14.1"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = '-p no:warnings'
+
+[tool.taskipy.tasks]
+run = 'fastapi dev fast_zero/app.py'
+test = 'pytest -s -x --cov=fast_zero -vv'
+post_test = 'coverage html'
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
