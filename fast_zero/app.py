@@ -1,17 +1,20 @@
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from fast_zero.models import User
+
 from http import HTTPStatus
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.responses import HTMLResponse
+from fast_zero.database import get_session
 from fast_zero.schemas import (
     MessageSchema,
     UserSchema,
     UserSchemaPublic,
-    UserDB,
     UserSchemaList,
 )
-from fastapi.responses import HTMLResponse
 
 app = FastAPI()
-
-database = []
 
 
 @app.get("/", status_code=HTTPStatus.OK, response_model=MessageSchema)  # 200 OK
@@ -36,46 +39,86 @@ def response_html():
 @app.post(
     "/users/", status_code=HTTPStatus.CREATED, response_model=UserSchemaPublic
 )  # 201 Created
-def create_user(user: UserSchema):
-    user_with_id = UserDB(id=len(database) + 1, **user.model_dump())
+def create_user(user: UserSchema, session: Session = Depends(get_session)):
+    db_user = session.scalar(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    )
+    if db_user:
+        if db_user.username == user.username:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail="Username already exists"
+            )
+        elif db_user.email == user.email:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail="Email already exists"
+            )
 
-    database.append(user_with_id)
-    return user_with_id
+    db_user = User(username=user.username, email=user.email, password=user.password)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+
+    return db_user
 
 
 @app.get("/users/", status_code=HTTPStatus.OK, response_model=UserSchemaList)
-def read_user():
-    user = {"users": database}
-    return user
+def read_user(
+    limit: int = 10,
+    skip: int = 0,
+    session: Session = Depends(get_session),
+):
+    user = session.scalars(select(User).limit(limit).offset(skip))
+    return {"users": user}
 
 
 @app.put("/users/{user_id}", status_code=HTTPStatus.OK, response_model=UserSchemaPublic)
-def update_user(user_id: int, user: UserSchema):
-    if user_id > len(database) or user_id < 1:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="User not found"
-        )  # 404 Not Found
+def update_user(
+    user_id: int,
+    user: UserSchema,
+    session: Session = Depends(get_session),
+):
+    db_user = session.scalar(select(User).where(User.id == user_id))
+    if not db_user:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
 
-    user_index = user_id - 1
-    user_with_id = UserDB(id=user_id, **user.model_dump())
-    database[user_index] = user_with_id
-    return user_with_id
+    try:
+        db_user.username = user.username
+        db_user.email = user.email
+        db_user.password = user.password
+        session.commit()
+        session.refresh(db_user)
+
+        return db_user
+    except IntegrityError:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT, detail="Username or Email already exists"
+        )
 
 
 @app.delete("/users/{user_id}", response_model=MessageSchema)
-def delete_user(user_id: int):
-    if user_id > len(database) or user_id < 1:
+def delete_user(
+    user_id: int,
+    session: Session = Depends(get_session),
+):
+    db_user = session.scalar(select(User).where(User.id == user_id))
+    if not db_user:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
 
-    user_index = user_id - 1
-    del database[user_index]
+    session.delete(db_user)
+    session.commit()
     return {"message": "User deleted successfully"}
 
 
 @app.get("/users/{user_id}", status_code=HTTPStatus.OK, response_model=UserSchemaPublic)
-def read_user_by_id(user_id: int):
-    if user_id > len(database) or user_id < 1:
+def read_user_by_id(
+    user_id: int,
+    session: Session = Depends(get_session),
+):
+    db_user = session.scalar(select(User).where(User.id == user_id))
+
+    if not db_user:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
 
-    user_index = user_id - 1
-    return database[user_index]
+    return db_user
