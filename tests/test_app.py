@@ -45,8 +45,45 @@ def test_create_user_success(client):
         "username": "testuser",
         "email": "user@email.com",
     }
-    # Assert that the response body is {"id": 1, "username": "testuser", "email": "
-    # "user@email.com"}
+
+
+def test_create_user_integrity_error(client):
+    response = client.post(
+        "/users/",
+        json={
+            "username": "testuser",
+            "email": "user@email.com",
+            "password": "password",
+        },
+    )  # Make a POST request to the /users/ path | Act
+
+
+def test_create_user_username_exists(client, user):
+    response = client.post(
+        "/users/",
+        json={
+            "username": user.username,
+            "email": "newemail@example.com",
+            "password": "password",
+        },
+    )  # Make a POST request to the /users/ path | Act
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {"detail": "Username already exists"}
+
+
+def test_create_user_email_exists(client, user):
+    response = client.post(
+        "/users/",
+        json={
+            "username": "newuser",
+            "email": user.email,
+            "password": "password",
+        },
+    )  # Make a POST request to the /users/ path | Act
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {"detail": "Email already exists"}
 
 
 def test_read_user_empty(client):
