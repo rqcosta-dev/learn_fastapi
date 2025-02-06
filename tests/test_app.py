@@ -185,3 +185,25 @@ def test_delete_user_not_found(client):
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {"detail": "User not found"}
+
+
+def test_get_access_token(client, user):
+    response = client.post(
+        "/token",
+        data={"username": user.email, "password": user.clean_password},
+    )
+    token = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert "access_token" in token
+    assert token["token_type"] == "Bearer"
+
+
+def test_get_access_token_invalid_user(client, user):
+    response = client.post(
+        "/token",
+        data={"username": user.email, "password": "wrongpassword"},
+    )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json() == {"detail": "Incorrect email or password"}

@@ -1,17 +1,21 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from fast_zero.models import User
 
 from http import HTTPStatus
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordRequestForm
+
+from fast_zero.models import User
 from fast_zero.database import get_session
+from fast_zero.security import get_password_hash, verify_password, create_access_token
 from fast_zero.schemas import (
     MessageSchema,
     UserSchema,
     UserSchemaPublic,
     UserSchemaList,
+    TokenSchema,
 )
 
 app = FastAPI()
@@ -55,7 +59,11 @@ def create_user(user: UserSchema, session: Session = Depends(get_session)):
                 status_code=HTTPStatus.BAD_REQUEST, detail="Email already exists"
             )
 
-    db_user = User(username=user.username, email=user.email, password=user.password)
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        password=get_password_hash(user.password),
+    )
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
@@ -86,7 +94,7 @@ def update_user(
     try:
         db_user.username = user.username
         db_user.email = user.email
-        db_user.password = user.password
+        db_user.password = get_password_hash(user.password)
         session.commit()
         session.refresh(db_user)
 
@@ -122,3 +130,19 @@ def read_user_by_id(
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
 
     return db_user
+
+
+@app.post("/token", status_code=HTTPStatus.OK, response_model=TokenSchema)
+def login_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session),
+):
+    db_user = session.scalar(select(User).where(User.email == form_data.username))
+
+    if not db_user or not verify_password(form_data.password, db_user.password):
+        raise HTTPException(
+            status_code=HTTPStatus.UNAUTHORIZED, detail="Incorrect email or password"
+        )
+    access_token = create_access_token(data={"sub": db_user.email})
+
+    return {"access_token": access_token, "token_type": "Bearer"}
