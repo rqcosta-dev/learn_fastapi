@@ -1,29 +1,14 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-
 from http import HTTPStatus
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fast_zero.schemas import MessageSchema
 
-from fast_zero.models import User
-from fast_zero.database import get_session
-from fast_zero.security import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    get_current_user,
-)
-from fast_zero.schemas import (
-    MessageSchema,
-    UserSchema,
-    UserSchemaPublic,
-    UserSchemaList,
-    TokenSchema,
-)
+from fast_zero.routers import auth, users
 
 app = FastAPI()
+
+app.include_router(auth.router)
+app.include_router(users.router)
 
 
 @app.get("/", status_code=HTTPStatus.OK, response_model=MessageSchema)  # 200 OK
@@ -43,118 +28,3 @@ def response_html():
         </body>
     </html>
     """
-
-
-@app.post(
-    "/users/", status_code=HTTPStatus.CREATED, response_model=UserSchemaPublic
-)  # 201 Created
-def create_user(user: UserSchema, session: Session = Depends(get_session)):
-    db_user = session.scalar(
-        select(User).where(
-            (User.username == user.username) | (User.email == user.email)
-        )
-    )
-    if db_user:
-        if db_user.username == user.username:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST, detail="Username already exists"
-            )
-        elif db_user.email == user.email:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST, detail="Email already exists"
-            )
-
-    db_user = User(
-        username=user.username,
-        email=user.email,
-        password=get_password_hash(user.password),
-    )
-    session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
-
-    return db_user
-
-
-@app.get("/users/", status_code=HTTPStatus.OK, response_model=UserSchemaList)
-def read_user(
-    limit: int = 10,
-    skip: int = 0,
-    session: Session = Depends(get_session),
-):
-    user = session.scalars(select(User).limit(limit).offset(skip))
-    return {"users": user}
-
-
-@app.put("/users/{user_id}", status_code=HTTPStatus.OK, response_model=UserSchemaPublic)
-def update_user(
-    user_id: int,
-    user: UserSchema,
-    session: Session = Depends(get_session),
-    current_user: str = Depends(get_current_user),
-):
-
-    if current_user.id != user_id:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail="You don't have permission to update this user",
-        )
-    try:
-        current_user.username = user.username
-        current_user.email = user.email
-        current_user.password = get_password_hash(user.password)
-        session.commit()
-        session.refresh(current_user)
-
-        return current_user
-    except IntegrityError:
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail="Username or Email already exists",
-        )
-
-
-@app.delete("/users/{user_id}", response_model=MessageSchema)
-def delete_user(
-    user_id: int,
-    session: Session = Depends(get_session),
-    current_user: str = Depends(get_current_user),
-):
-    if current_user.id != user_id:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail="You don't have permission to delete this user",
-        )
-
-    session.delete(current_user)
-    session.commit()
-    return {"message": "User deleted successfully"}
-
-
-@app.get("/users/{user_id}", status_code=HTTPStatus.OK, response_model=UserSchemaPublic)
-def read_user_by_id(
-    user_id: int,
-    session: Session = Depends(get_session),
-):
-    db_user = session.scalar(select(User).where(User.id == user_id))
-
-    if not db_user:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User not found")
-
-    return db_user
-
-
-@app.post("/token", status_code=HTTPStatus.OK, response_model=TokenSchema)
-def login_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    session: Session = Depends(get_session),
-):
-    db_user = session.scalar(select(User).where(User.email == form_data.username))
-
-    if not db_user or not verify_password(form_data.password, db_user.password):
-        raise HTTPException(
-            status_code=HTTPStatus.UNAUTHORIZED, detail="Incorrect email or password"
-        )
-    access_token = create_access_token(data={"sub": db_user.email})
-
-    return {"access_token": access_token, "token_type": "Bearer"}
