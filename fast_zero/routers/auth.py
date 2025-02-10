@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from fast_zero.models import User
 from fast_zero.database import get_session
-from fast_zero.security import verify_password, create_access_token
+from fast_zero.security import verify_password, create_access_token, get_current_user
 from fast_zero.schemas import TokenSchema
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -31,3 +31,10 @@ def login_access_token(
     access_token = create_access_token(data={"sub": db_user.email})
 
     return {"access_token": access_token, "token_type": "Bearer"}
+
+
+@router.post("/refresh_token", status_code=HTTPStatus.OK, response_model=TokenSchema)
+def refresh_access_token(user: User = Depends(get_current_user)):
+    new_access_token = create_access_token(data={"sub": user.email})
+
+    return {"access_token": new_access_token, "token_type": "Bearer"}
