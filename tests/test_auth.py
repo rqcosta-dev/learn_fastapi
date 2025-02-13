@@ -17,9 +17,18 @@ def test_get_access_token(client, user):
 def test_get_access_token_invalid_user(client, user):
     response = client.post(
         "auth/token",
-        data={"username": user.email, "password": "wrongpassword"},
+        data={"username": "no_user@no_domain.com", "password": "testtest"},
     )
 
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.json() == {"detail": "Incorrect email or password"}
+
+
+def test_token_wrong_password(client, user):
+    response = client.post(
+        "/auth/token",
+        data={"username": user.email, "password": "wrong_password"},
+    )
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {"detail": "Incorrect email or password"}
 

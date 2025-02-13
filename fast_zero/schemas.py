@@ -1,5 +1,7 @@
+from datetime import datetime
 from typing import List
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
+from fast_zero.models import TodoState
 
 
 class MessageSchema(BaseModel):
@@ -26,3 +28,36 @@ class UserSchemaList(BaseModel):
 class TokenSchema(BaseModel):
     access_token: str
     token_type: str
+
+
+class TodoSchema(BaseModel):
+    title: str
+    description: str
+    state: TodoState
+
+
+class TodoSchemaPublic(TodoSchema):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class TodoSchemaList(BaseModel):
+    todos: list[TodoSchemaPublic]
+
+
+class TodoSchemaUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    state: TodoState | None = None
+
+
+class FilterPage(BaseModel):
+    offset: int = 0
+    limit: int = 100
+
+
+class FilterTodo(FilterPage):
+    title: str | None = None
+    description: str | None = None
+    state: TodoState | None = None

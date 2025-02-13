@@ -10,7 +10,7 @@ def test_jwt():
     decoded = jwt_decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
     assert decoded["test"] == data["test"]
-    assert decoded["exp"]
+    assert "exp" in decoded
 
 
 def test_jwt_invalid_token(client):
