@@ -1,12 +1,12 @@
 import pytest
 
+from testcontainers.postgres import PostgresContainer
 from fastapi.testclient import TestClient
 from contextlib import contextmanager
 from datetime import datetime
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
 
 from fast_zero.app import app
 from fast_zero.database import get_session
@@ -28,17 +28,22 @@ def client(session):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def session():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+@pytest.fixture(scope="session")
+def engine():
+    # Create a Postgres container for the duration of the test session
+    with PostgresContainer("postgres:16", driver="psycopg") as postgres:
+        _engine = create_engine(postgres.get_connection_url())
+        with _engine.begin():
+            yield _engine
+
+
+@pytest.fixture()
+def session(engine):
     table_registry.metadata.create_all(engine)
 
     with Session(engine) as session:
         yield session
+        session.rollback()
 
     table_registry.metadata.drop_all(engine)
 
