@@ -10,6 +10,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     env:
       SECRET_KEY: ${{secrets.SECRET_KEY}}
       ALGORITHM: ${{secrets.ALGORITHM}}
@@ -18,15 +21,20 @@ jobs:
       ENVIRONMENT: ${{secrets.ENVIRONMENT}}
     steps:
       - name: Checkout code and copy to workspace
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Atualização do sistema
+        run: sudo apt update
 
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
+
       - name: Install Poetry and dependencies
         run: |
           pipx install poetry
-          poetry install
+          poetry install --no-root
+
       - name: Run tests
         run: poetry run task test
