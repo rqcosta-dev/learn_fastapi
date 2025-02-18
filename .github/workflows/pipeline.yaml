@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13"]
     env:
       SECRET_KEY: ${{secrets.SECRET_KEY}}
       ALGORITHM: ${{secrets.ALGORITHM}}
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout code and copy to workspace
         uses: actions/checkout@v4
 
-      - name: Atualização do sistema
+      - name: Operating System-(OS) update
         run: sudo apt update
 
       - name: Install Python

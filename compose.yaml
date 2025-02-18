@@ -21,7 +21,7 @@ services:
     depends_on:
       - fastzero_database
     environment:
-      ENV: ${ENVIRONMENT}
+      ENV: ${ENV}
     volumes:
       - .:/app
     restart: always
