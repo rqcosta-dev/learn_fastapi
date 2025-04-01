@@ -1,0 +1,30 @@
+name: Run Unit Tests
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code and copy to workspace
+        uses: actions/checkout@v4
+
+      - name: Ubuntu-latest - Operating System update
+        run: sudo apt update
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry and project dependencies
+        run: |
+          pipx install poetry
+          poetry install --no-root
+
+      - name: Run unit tests
+        run: poetry run task test
