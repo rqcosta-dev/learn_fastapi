@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.12"]
     env:
       SECRET_KEY: ${{secrets.SECRET_KEY}}
       ALGORITHM: ${{secrets.ALGORITHM}}
@@ -26,12 +26,12 @@ jobs:
       - name: Operating System-(OS) update
         run: sudo apt update
 
-      - name: Install Python
+      - name: Set up Python environment
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry and dependencies
+      - name: Install Poetry and project dependencies
         run: |
           pipx install poetry
           poetry install --no-root
