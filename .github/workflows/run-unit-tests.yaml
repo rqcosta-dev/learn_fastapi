@@ -1,4 +1,4 @@
-name: CI - Run Unit Tests
+name: Run Unit Tests
 on:
   pull_request:
     branches:
@@ -6,7 +6,6 @@ on:
     types:
       - opened
       - synchronize
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,7 +22,7 @@ jobs:
       - name: Checkout code and copy to workspace
         uses: actions/checkout@v4
 
-      - name: Operating System-(OS) update
+      - name: Ubuntu-latest - Operating System update
         run: sudo apt update
 
       - name: Set up Python environment

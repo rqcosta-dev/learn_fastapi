@@ -16,7 +16,7 @@ def test_create_user_success(client):
         response.status_code == HTTPStatus.CREATED
     )  # Assert that the response status code is 201 Created
     assert response.json() == {
-        "id": 12,
+        "id": 1,
         "username": "testuser",
         "email": "user@email.com",
     }
