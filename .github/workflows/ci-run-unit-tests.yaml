@@ -1,18 +1,18 @@
-name: Pipeline
+name: CI - Run Unit Tests
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+    types:
+      - opened
+      - synchronize
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.13"]
     env:
       SECRET_KEY: ${{secrets.SECRET_KEY}}
       ALGORITHM: ${{secrets.ALGORITHM}}
@@ -36,5 +36,5 @@ jobs:
           pipx install poetry
           poetry install --no-root
 
-      - name: Run tests
+      - name: Run unit tests
         run: poetry run task test
